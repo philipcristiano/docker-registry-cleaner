@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1](https://github.com/philipcristiano/docker-registry-cleaner/compare/v0.1.0...v0.1.1) (2024-07-07)
+
+
+### Bug Fixes
+
+* Handle annotations that don't include a digest ([59140a0](https://github.com/philipcristiano/docker-registry-cleaner/commit/59140a00e3d040919ec6896e665352933cb6c0de))
+
 ## 0.1.0 (2024-07-07)
 
 
