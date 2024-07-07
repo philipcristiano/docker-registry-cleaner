@@ -6,7 +6,6 @@ use std::error::Error;
 use std::str::FromStr;
 use std::string::ToString;
 
-
 #[derive(Parser, Debug)]
 pub struct Args {
     #[arg(short, long, value_enum, default_value = "DEBUG")]
@@ -40,7 +39,15 @@ async fn main() -> Result<(), Box<dyn Error>> {
             let mut unlabeled_images: Vec<String> = Vec::new();
 
             for tag in tags {
-                match get_last_updated_label(&client, registry_url, &repo, &tag, &args.last_updated_label).await {
+                match get_last_updated_label(
+                    &client,
+                    registry_url,
+                    &repo,
+                    &tag,
+                    &args.last_updated_label,
+                )
+                .await
+                {
                     Ok(Some(last_updated)) => labeled_images.push((tag, last_updated)),
                     Ok(None) => unlabeled_images.push(tag),
                     Err(e) => tracing::error!(error = e, repo = repo, tag = tag, "Error"),
@@ -161,7 +168,7 @@ struct ManifestConfig {
 #[derive(serde::Deserialize, Clone, Debug)]
 struct Annotations {
     #[serde(rename = "vnd.docker.reference.digest")]
-    reference_digest: String,
+    reference_digest: Option<String>,
 }
 
 #[derive(serde::Deserialize, Clone, Debug)]
@@ -187,6 +194,9 @@ async fn get_last_updated_label(
         .await?;
     for manifest in response.manifests {
         if let Some(annotation) = manifest.annotations {
+            if let None = annotation.reference_digest {
+                continue;
+            }
             let url = format!("{}/{}/manifests/{}", registry_url, repo, manifest.digest);
             tracing::debug!("Child manifest URL {url}");
             let response = client
