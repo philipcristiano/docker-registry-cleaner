@@ -1,3 +1,4 @@
+use clap::Parser;
 use reqwest::Client;
 use serde_json::Value;
 use std::collections::HashMap;
@@ -5,12 +6,25 @@ use std::error::Error;
 use std::str::FromStr;
 use std::string::ToString;
 
+
+#[derive(Parser, Debug)]
+pub struct Args {
+    #[arg(short, long, value_enum, default_value = "DEBUG")]
+    log_level: tracing::Level,
+    #[arg(long)]
+    registry: String,
+    #[arg(long)]
+    last_updated_label: String,
+    #[arg(long, default_value = "5")]
+    keep_n: usize,
+}
 use tracing::Level;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    service_conventions::tracing::setup(Level::INFO);
+    let args = Args::parse();
+    service_conventions::tracing::setup(args.log_level);
     let client = Client::new();
-    let registry_url = "https://docker-registry.home.cristiano.cloud/v2";
+    let registry_url = &format!("{}/v2", &args.registry);
 
     // Get list of repositories
     let repos: Vec<String> = get_repositories(&client, registry_url).await?;
@@ -26,7 +40,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             let mut unlabeled_images: Vec<String> = Vec::new();
 
             for tag in tags {
-                match get_last_updated_label(&client, registry_url, &repo, &tag).await {
+                match get_last_updated_label(&client, registry_url, &repo, &tag, &args.last_updated_label).await {
                     Ok(Some(last_updated)) => labeled_images.push((tag, last_updated)),
                     Ok(None) => unlabeled_images.push(tag),
                     Err(e) => tracing::error!(error = e, repo = repo, tag = tag, "Error"),
@@ -48,7 +62,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             // Keep the latest 3 labeled images, delete the rest
             let images_to_keep: Vec<String> = labeled_images
                 .iter()
-                .take(3)
+                .take(args.keep_n)
                 .map(|(tag, _)| tag.clone())
                 .collect();
 
@@ -160,6 +174,7 @@ async fn get_last_updated_label(
     registry_url: &str,
     repo: &str,
     tag: &str,
+    last_updated_label: &str,
 ) -> Result<Option<String>, Box<dyn Error>> {
     let url = format!("{}/{}/manifests/{}", registry_url, repo, tag);
     tracing::debug!("URL {url}");
@@ -204,7 +219,7 @@ async fn get_last_updated_label(
                 .await?;
             tracing::debug!("Blob Response {response:?}");
             if let Some(labels) = response.config.get("Labels") {
-                if let Some(last_updated) = labels.get("image.last-copied") {
+                if let Some(last_updated) = labels.get(last_updated_label) {
                     return Ok(Some(last_updated.to_owned()));
                 }
             }
