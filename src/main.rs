@@ -14,6 +14,8 @@ pub struct Args {
     registry: String,
     #[arg(long)]
     last_updated_label: String,
+    #[arg(long, action)]
+    dry_run: bool,
     #[arg(long, default_value = "5")]
     keep_n: usize,
 }
@@ -21,6 +23,7 @@ use tracing::Level;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     let args = Args::parse();
+    let delete_with = Delete::new(args.dry_run);
     service_conventions::tracing::setup(args.log_level);
     let client = Client::new();
     let registry_url = &format!("{}/v2", &args.registry);
@@ -75,10 +78,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
             // Delete all images not in the keep list
             delete_images(
+                &delete_with,
                 &client,
                 registry_url,
                 &repo,
-                &images_to_keep,
                 &labeled_images,
                 &unlabeled_images,
             )
@@ -91,24 +94,90 @@ async fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
+enum DeleteType {
+    Real,
+    NoOp,
+}
+
+struct Delete {
+    delete_type: DeleteType,
+}
+
+impl Delete {
+    fn new(dry_run: bool) -> Delete {
+        let delete_type = match dry_run {
+            true => DeleteType::NoOp,
+            false => DeleteType::Real,
+        };
+        Delete { delete_type }
+    }
+
+    async fn delete_image(
+        &self,
+        client: &Client,
+        registry_url: &str,
+        repo: &str,
+        tag: &str,
+    ) -> Result<(), Box<dyn Error>> {
+        match self.delete_type {
+            DeleteType::NoOp => {
+                tracing::info!(repo = repo, tag = tag, "Dry run, not deleteing");
+
+                Ok(())
+            }
+            DeleteType::Real => {
+                let url = format!("{}/{}/manifests/{}", registry_url, repo, tag);
+
+                // First, get the digest
+                let digest = client
+                    .get(&url)
+                    .header(
+                        "Accept",
+                        "application/vnd.docker.distribution.manifest.v2+json",
+                    )
+                    .send()
+                    .await?
+                    .headers()
+                    .get("Docker-Content-Digest")
+                    .ok_or("Digest not found")?
+                    .to_str()?
+                    .to_string();
+
+                // Then, delete the image using the digest
+                let delete_url = format!("{}/{}/manifests/{}", registry_url, repo, digest);
+                tracing::debug!("Delete {url}");
+                client.delete(&url).send().await?;
+                tracing::debug!("Delete {delete_url}");
+                client.delete(&delete_url).send().await?;
+
+                Ok(())
+            }
+        }
+    }
+}
+
 async fn delete_images(
+    delete_with: &Delete,
     client: &Client,
     registry_url: &str,
     repo: &str,
-    images_to_keep: &[String],
     labeled_images: &[(String, String)],
     unlabeled_images: &[String],
 ) -> Result<(), Box<dyn Error>> {
     // Delete labeled images not in the keep list
     for (tag, _) in labeled_images.iter().skip(3) {
-        delete_image(client, registry_url, repo, tag).await?;
-        tracing::info!("Deleted labeled image {}:{}", repo, tag);
+        tracing::info!(repository=repo, tag=tag, "Labeled image elligible for deletion");
+        delete_with
+            .delete_image(client, registry_url, repo, tag)
+            .await?;
     }
 
     // Delete all unlabeled images
     for tag in unlabeled_images {
-        delete_image(client, registry_url, repo, tag).await?;
-        tracing::info!("Deleted unlabeled image {}:{}", repo, tag);
+        tracing::info!(repository=repo, tag=tag, "Unlaballed image elligible for deletion");
+        delete_with
+            .delete_image(client, registry_url, repo, tag)
+            .await?;
     }
 
     Ok(())
@@ -244,37 +313,4 @@ async fn get_last_updated_label(
 
     //Ok(labels.get("image.last-updated").and_then(|v| v.as_str().map(String::from)))
     Ok(None)
-}
-
-async fn delete_image(
-    client: &Client,
-    registry_url: &str,
-    repo: &str,
-    tag: &str,
-) -> Result<(), Box<dyn Error>> {
-    let url = format!("{}/{}/manifests/{}", registry_url, repo, tag);
-
-    // First, get the digest
-    let digest = client
-        .get(&url)
-        .header(
-            "Accept",
-            "application/vnd.docker.distribution.manifest.v2+json",
-        )
-        .send()
-        .await?
-        .headers()
-        .get("Docker-Content-Digest")
-        .ok_or("Digest not found")?
-        .to_str()?
-        .to_string();
-
-    // Then, delete the image using the digest
-    let delete_url = format!("{}/{}/manifests/{}", registry_url, repo, digest);
-    tracing::debug!("Delete {url}");
-    client.delete(&url).send().await?;
-    tracing::debug!("Delete {delete_url}");
-    client.delete(&delete_url).send().await?;
-
-    Ok(())
 }
