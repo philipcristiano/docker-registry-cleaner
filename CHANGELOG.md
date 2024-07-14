@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.0](https://github.com/philipcristiano/docker-registry-cleaner/compare/v0.1.1...v0.2.0) (2024-07-14)
+
+
+### Features
+
+* Add --dry-run ([5e06433](https://github.com/philipcristiano/docker-registry-cleaner/commit/5e06433ae8dfe1be9ed84c0431b5fb658680ec0c))
+
 ## [0.1.1](https://github.com/philipcristiano/docker-registry-cleaner/compare/v0.1.0...v0.1.1) (2024-07-07)
 
 
