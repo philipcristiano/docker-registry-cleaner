@@ -12,6 +12,7 @@ Options:
   -l, --log-level <LOG_LEVEL>                    [default: DEBUG]
       --registry <REGISTRY>
       --last-updated-label <LAST_UPDATED_LABEL>
+      --dry-run
       --keep-n <KEEP_N>                          [default: 5]
   -h, --help                                     Print help
 
