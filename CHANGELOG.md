@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/philipcristiano/docker-registry-cleaner/compare/v0.2.0...v0.2.1) (2024-11-21)
+
+
+### Bug Fixes
+
+* paginate catalog ([bb6db4b](https://github.com/philipcristiano/docker-registry-cleaner/commit/bb6db4babf97612de60875165c87c409519f7e56))
+
 ## [0.2.0](https://github.com/philipcristiano/docker-registry-cleaner/compare/v0.1.1...v0.2.0) (2024-11-21)
 
 
