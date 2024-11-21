@@ -414,12 +414,16 @@ dependencies = [
 name = "docker-registry-cleaner"
 version = "0.2.0"
 dependencies = [
+ "anyhow",
+ "async-stream",
  "clap",
  "dkregistry",
+ "futures",
  "reqwest 0.12.9",
  "serde",
  "serde_json",
  "service_conventions",
+ "thiserror 2.0.3",
  "tokio",
  "tracing",
 ]

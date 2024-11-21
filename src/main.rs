@@ -2,10 +2,15 @@ use clap::Parser;
 use reqwest::Client;
 use serde_json::Value;
 use std::collections::HashMap;
-use std::error::Error;
 use std::str::FromStr;
-use std::string::ToString;
 
+use futures::{
+    stream::{Stream, TryStreamExt},
+    {self},
+};
+use thiserror::Error;
+
+use async_stream::try_stream;
 #[derive(Parser, Debug)]
 pub struct Args {
     #[arg(short, long, value_enum, default_value = "DEBUG")]
@@ -19,24 +24,32 @@ pub struct Args {
     #[arg(long, default_value = "5")]
     keep_n: usize,
 }
+
+#[non_exhaustive]
+#[derive(Error, Debug)]
+pub enum DockerAPIError {
+    #[error("Error requesting from the Docker Registry API")]
+    Reqwest(#[from] reqwest::Error),
+    #[error("Missing Content-Digest-Header from Docker API")]
+    MissingContentDigestError,
+}
+
 use tracing::Level;
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
+async fn main() -> anyhow::Result<()> {
     let args = Args::parse();
     let delete_with = Delete::new(args.dry_run);
     service_conventions::tracing::setup(args.log_level);
     let client = Client::new();
-    let registry_url = &format!("{}/v2", &args.registry);
+    let registry_url = &format!("{}", &args.registry);
+    let registry_v2_url = &format!("{}/v2", &args.registry);
 
     // Get list of repositories
-    let repos: Vec<String> = get_repositories(&client, registry_url).await?;
-    //let repos = vec!("philipcristiano/et");
-
-    tracing::debug!("Repos {repos:?}");
-
-    for repo in repos {
+    let repo_stream = get_repositories(&client, &registry_url);
+    futures::pin_mut!(repo_stream);
+    while let Ok(Some(repo)) = repo_stream.try_next().await {
         // Get list of tags for the repository
-        if let Ok(tags) = get_tags(&client, registry_url, &repo).await {
+        if let Ok(tags) = get_tags(&client, &registry_v2_url, &repo.to_string()).await {
             // Get image manifests and their last-updated labels
             let mut labeled_images: Vec<(String, String)> = Vec::new();
             let mut unlabeled_images: Vec<String> = Vec::new();
@@ -44,7 +57,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             for tag in tags {
                 match get_last_updated_label(
                     &client,
-                    registry_url,
+                    &registry_v2_url,
                     &repo,
                     &tag,
                     &args.last_updated_label,
@@ -53,7 +66,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 {
                     Ok(Some(last_updated)) => labeled_images.push((tag, last_updated)),
                     Ok(None) => unlabeled_images.push(tag),
-                    Err(e) => tracing::error!(error = e, repo = repo, tag = tag, "Error"),
+                    Err(e) => tracing::error!(error =? e, repo = repo, tag = tag, "Error"),
                 }
             }
 
@@ -77,13 +90,71 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 .collect();
 
             // Delete all images not in the keep list
-            delete_images(&delete_with, &client, registry_url, &repo, &labeled_images).await?;
+            delete_images(
+                &delete_with,
+                &client,
+                &registry_v2_url,
+                &repo,
+                &labeled_images,
+            )
+            .await?;
         } else {
             tracing::info!(repo = repo, "Could not get tags")
         }
     }
 
     Ok(())
+}
+
+#[derive(serde::Deserialize, Clone, Debug)]
+struct CatalogResponse {
+    repositories: Vec<String>,
+}
+fn get_repositories<'a>(
+    client: &'a Client,
+    registry_url: &'a str,
+) -> impl Stream<Item = Result<String, DockerAPIError>> + 'a {
+    let initial_url = format!("{}/v2/_catalog", registry_url);
+    tracing::debug!("Initial URL {initial_url}");
+
+    try_stream! {
+        let mut next_url = Some(initial_url);
+
+        while let Some(url) = next_url {
+            let response = client.get(&url).send().await?;
+
+            // Extract next page URL from Link header if it exists
+            next_url = response.headers()
+                .get("link")
+                .and_then(|h| h.to_str().ok())
+                .and_then(|link_str| {
+                    // Parse Link header format: <url>; rel="next"
+                    link_str.split(',')
+                        .find(|part| part.contains("rel=\"next\""))
+                        .and_then(|next_link| {
+                            next_link.split(';')
+                                .next()
+                                .map(|url| {
+                                    let relative_url = url.trim().trim_matches('<').trim_matches('>');
+                                    // If it's a relative URL, prepend the registry URL
+                                    if relative_url.starts_with('/') {
+                                        format!("{}{}", registry_url, relative_url)
+                                    } else {
+                                        relative_url.to_string()
+                                    }
+                                })
+                        })
+                });
+
+            let catalog = response.json::<CatalogResponse>().await?;
+
+            for repo in catalog.repositories {
+                yield repo.to_string();
+            }
+
+            tracing::debug!("Next URL: {:?}", next_url);
+        }
+    }
 }
 
 enum DeleteType {
@@ -110,7 +181,7 @@ impl Delete {
         registry_url: &str,
         repo: &str,
         tag: &str,
-    ) -> Result<(), Box<dyn Error>> {
+    ) -> anyhow::Result<()> {
         match self.delete_type {
             DeleteType::NoOp => {
                 tracing::info!(repo = repo, tag = tag, "Dry run, not deleteing");
@@ -131,7 +202,7 @@ impl Delete {
                     .await?
                     .headers()
                     .get("Docker-Content-Digest")
-                    .ok_or("Digest not found")?
+                    .ok_or(DockerAPIError::MissingContentDigestError)?
                     .to_str()?
                     .to_string();
 
@@ -154,7 +225,7 @@ async fn delete_images(
     registry_url: &str,
     repo: &str,
     labeled_images: &[(String, String)],
-) -> Result<(), Box<dyn Error>> {
+) -> anyhow::Result<()> {
     // Delete labeled images not in the keep list
     for (tag, _) in labeled_images.iter().skip(3) {
         tracing::info!(
@@ -171,31 +242,11 @@ async fn delete_images(
 }
 
 #[derive(serde::Deserialize, Clone, Debug)]
-struct CatalogResponse {
-    repositories: Vec<String>,
-}
-
-async fn get_repositories(
-    client: &Client,
-    registry_url: &str,
-) -> Result<Vec<String>, Box<dyn Error>> {
-    let url = format!("{}/_catalog", registry_url);
-    tracing::debug!("URL {url}");
-    let response = client.get(&url).send().await?;
-    let catalog = response.json::<CatalogResponse>().await?;
-    Ok(catalog.repositories.to_owned())
-}
-
-#[derive(serde::Deserialize, Clone, Debug)]
 struct TagsResponse {
     tags: Vec<String>,
 }
 
-async fn get_tags(
-    client: &Client,
-    registry_url: &str,
-    repo: &str,
-) -> Result<Vec<String>, Box<dyn Error>> {
+async fn get_tags(client: &Client, registry_url: &str, repo: &str) -> anyhow::Result<Vec<String>> {
     let url = format!("{}/{}/tags/list", registry_url, repo);
     tracing::debug!("URL {url}");
     let response = client.get(&url).send().await?;
@@ -238,7 +289,7 @@ async fn get_last_updated_label(
     repo: &str,
     tag: &str,
     last_updated_label: &str,
-) -> Result<Option<String>, Box<dyn Error>> {
+) -> anyhow::Result<Option<String>> {
     let url = format!("{}/{}/manifests/{}", registry_url, repo, tag);
     tracing::debug!("URL {url}");
     let response = client

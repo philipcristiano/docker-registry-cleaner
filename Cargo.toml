@@ -17,3 +17,7 @@ dkregistry = { git = "https://github.com/camallo/dkregistry-rs.git", version = "
 service_conventions = { version = "0.0.23", features = ["tracing"], default-features = false }
 tracing = "0.1.40"
 clap = { version = "4.5.8", features = ["derive"] }
+futures = "0.3.31"
+anyhow = "1.0.93"
+async-stream = "0.3.6"
+thiserror = "2.0.3"
