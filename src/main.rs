@@ -77,15 +77,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 .collect();
 
             // Delete all images not in the keep list
-            delete_images(
-                &delete_with,
-                &client,
-                registry_url,
-                &repo,
-                &labeled_images,
-                &unlabeled_images,
-            )
-            .await?;
+            delete_images(&delete_with, &client, registry_url, &repo, &labeled_images).await?;
         } else {
             tracing::info!(repo = repo, "Could not get tags")
         }
@@ -162,19 +154,14 @@ async fn delete_images(
     registry_url: &str,
     repo: &str,
     labeled_images: &[(String, String)],
-    unlabeled_images: &[String],
 ) -> Result<(), Box<dyn Error>> {
     // Delete labeled images not in the keep list
     for (tag, _) in labeled_images.iter().skip(3) {
-        tracing::info!(repository=repo, tag=tag, "Labeled image elligible for deletion");
-        delete_with
-            .delete_image(client, registry_url, repo, tag)
-            .await?;
-    }
-
-    // Delete all unlabeled images
-    for tag in unlabeled_images {
-        tracing::info!(repository=repo, tag=tag, "Unlaballed image elligible for deletion");
+        tracing::info!(
+            repository = repo,
+            tag = tag,
+            "Labeled image elligible for deletion"
+        );
         delete_with
             .delete_image(client, registry_url, repo, tag)
             .await?;
