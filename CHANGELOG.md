@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.2.2](https://github.com/philipcristiano/docker-registry-cleaner/compare/v0.2.1...v0.2.2) (2024-12-31)
+
+
+### Bug Fixes
+
+* **deps:** update rust crate anyhow to v1.0.94 ([#35](https://github.com/philipcristiano/docker-registry-cleaner/issues/35)) ([9e896cd](https://github.com/philipcristiano/docker-registry-cleaner/commit/9e896cd8f0ad2cad0f0bdc3786accb3cb03ba81a))
+* **deps:** update rust crate anyhow to v1.0.95 ([#48](https://github.com/philipcristiano/docker-registry-cleaner/issues/48)) ([e85401d](https://github.com/philipcristiano/docker-registry-cleaner/commit/e85401d547131029445a5fff59d3c86155b762e0))
+* **deps:** update rust crate clap to v4.5.22 ([#36](https://github.com/philipcristiano/docker-registry-cleaner/issues/36)) ([fef5e46](https://github.com/philipcristiano/docker-registry-cleaner/commit/fef5e462d0b848c74f49dba1ec8b71ce9a908d40))
+* **deps:** update rust crate clap to v4.5.23 ([#37](https://github.com/philipcristiano/docker-registry-cleaner/issues/37)) ([28065be](https://github.com/philipcristiano/docker-registry-cleaner/commit/28065bef65e5dfc7825019598b0bca38d735fa5c))
+* **deps:** update rust crate reqwest to v0.12.10 ([#50](https://github.com/philipcristiano/docker-registry-cleaner/issues/50)) ([2a25d24](https://github.com/philipcristiano/docker-registry-cleaner/commit/2a25d24b25184b6843859c5b69e309afca414698))
+* **deps:** update rust crate reqwest to v0.12.11 ([#51](https://github.com/philipcristiano/docker-registry-cleaner/issues/51)) ([929d510](https://github.com/philipcristiano/docker-registry-cleaner/commit/929d510eb8370df15cfd1ab31fadbd16ce282e00))
+* **deps:** update rust crate reqwest to v0.12.12 ([#55](https://github.com/philipcristiano/docker-registry-cleaner/issues/55)) ([dce1147](https://github.com/philipcristiano/docker-registry-cleaner/commit/dce114730ad167c2265e3fb069493ede446beec8))
+* **deps:** update rust crate serde to v1.0.216 ([#41](https://github.com/philipcristiano/docker-registry-cleaner/issues/41)) ([326f9c4](https://github.com/philipcristiano/docker-registry-cleaner/commit/326f9c4c2d933d4a97185a73d92a8bb4554705ba))
+* **deps:** update rust crate serde to v1.0.217 ([#52](https://github.com/philipcristiano/docker-registry-cleaner/issues/52)) ([1f58ea7](https://github.com/philipcristiano/docker-registry-cleaner/commit/1f58ea71e9a3e9c2da789d31e9b0a614f1758fe7))
+* **deps:** update rust crate serde_json to v1.0.134 ([#46](https://github.com/philipcristiano/docker-registry-cleaner/issues/46)) ([db6cb45](https://github.com/philipcristiano/docker-registry-cleaner/commit/db6cb45a6e3b66dc4bc36219503c1dd63db20c6f))
+* **deps:** update rust crate service_conventions to 0.0.24 ([#30](https://github.com/philipcristiano/docker-registry-cleaner/issues/30)) ([09c2056](https://github.com/philipcristiano/docker-registry-cleaner/commit/09c2056dd1664bae3299931ee7298e7d9a56295b))
+* **deps:** update rust crate thiserror to v2.0.4 ([#34](https://github.com/philipcristiano/docker-registry-cleaner/issues/34)) ([cb671a8](https://github.com/philipcristiano/docker-registry-cleaner/commit/cb671a85fdb275176ed658a1f523af5a6fee0cdb))
+* **deps:** update rust crate thiserror to v2.0.5 ([#38](https://github.com/philipcristiano/docker-registry-cleaner/issues/38)) ([88ef0d7](https://github.com/philipcristiano/docker-registry-cleaner/commit/88ef0d70fa4cdf2d3330712cf1144b22702ca9cd))
+* **deps:** update rust crate thiserror to v2.0.6 ([#39](https://github.com/philipcristiano/docker-registry-cleaner/issues/39)) ([c6421df](https://github.com/philipcristiano/docker-registry-cleaner/commit/c6421dfd68a89556dad6cfabb0348a1f906acb56))
+* **deps:** update rust crate thiserror to v2.0.7 ([#42](https://github.com/philipcristiano/docker-registry-cleaner/issues/42)) ([f349512](https://github.com/philipcristiano/docker-registry-cleaner/commit/f349512331d2408c3e4ea8be51ae02a0e77d6f52))
+* **deps:** update rust crate thiserror to v2.0.8 ([#45](https://github.com/philipcristiano/docker-registry-cleaner/issues/45)) ([724294c](https://github.com/philipcristiano/docker-registry-cleaner/commit/724294c4c3ae26728871471a13ea731d605bda1a))
+* **deps:** update rust crate thiserror to v2.0.9 ([#47](https://github.com/philipcristiano/docker-registry-cleaner/issues/47)) ([0d36d36](https://github.com/philipcristiano/docker-registry-cleaner/commit/0d36d365b869eba3512e1fe30932a10c5a83e501))
+* **deps:** update rust crate tokio to v1.42.0 ([#33](https://github.com/philipcristiano/docker-registry-cleaner/issues/33)) ([1cb2f6e](https://github.com/philipcristiano/docker-registry-cleaner/commit/1cb2f6e0446304a00b8c6953f6e5b4fe5175c6f1))
+* **deps:** update rust crate tracing to v0.1.41 ([#28](https://github.com/philipcristiano/docker-registry-cleaner/issues/28)) ([254a07a](https://github.com/philipcristiano/docker-registry-cleaner/commit/254a07af99c7af3e577b6d78b7cdd3ab08465433))
+
 ## [0.2.1](https://github.com/philipcristiano/docker-registry-cleaner/compare/v0.2.0...v0.2.1) (2024-11-21)
 
 
